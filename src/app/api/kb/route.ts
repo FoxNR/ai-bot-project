@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 import * as cheerio from 'cheerio';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>;
 
+export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const contentType = req.headers.get('content-type') || '';
@@ -23,6 +22,7 @@ export async function POST(req: Request) {
         const buffer = Buffer.from(arrayBuffer);
         
         if (file.name.toLowerCase().endsWith('.pdf')) {
+          const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>;
           const pdfData = await pdfParse(buffer);
           contentStr = pdfData.text;
         } else {
