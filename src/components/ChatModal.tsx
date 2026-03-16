@@ -4,16 +4,91 @@ import React, { useState, useRef, useEffect } from 'react';
 import styles from './ChatModal.module.css';
 import { Send, Phone } from 'lucide-react';
 
+const ContactWidget = ({ onSubmit }: { onSubmit: (data: any) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('+380');
+  const [submitted, setSubmitted] = useState(false);
+
+  // Phone mask logic (Ukrainian format: +380XXXXXXXXX)
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    if (!val.startsWith('+380')) val = '+380';
+    // Only allow digits after +380
+    val = '+380' + val.slice(4).replace(/[^\d]/g, '').slice(0, 9);
+    setPhone(val);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isOpen) {
+      if (phone.length === 13) {
+        onSubmit({ name, phone });
+        setSubmitted(true);
+      }
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className={styles.ctaContainer}>
+         <div className={styles.ctaText}>Дякую! Вашу заявку надіслано.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.ctaContainer}>
+      <div className={styles.ctaActions}>
+        <a href="tel:+380800338008" className={styles.phoneLink}>
+          <Phone size={16} /> +380 800 338 008
+        </a>
+        <form onSubmit={handleSubmit} className={styles.interactiveForm}>
+          <div className={`${styles.expandableFields} ${isOpen ? styles.open : ''}`}>
+             <input 
+               type="text" 
+               placeholder="Ваше ім'я" 
+               value={name} 
+               onChange={e => setName(e.target.value)} 
+               required={isOpen} 
+               className={styles.inputField} 
+               onFocus={(e) => e.target.placeholder = ''} 
+               onBlur={(e) => e.target.placeholder = "Ваше ім'я"} 
+             />
+             <input 
+               type="tel" 
+               value={phone} 
+               onChange={handlePhoneChange} 
+               required={isOpen} 
+               pattern="^\+380[0-9]{9}$" 
+               className={styles.inputField} 
+             />
+          </div>
+          <button 
+             type={isOpen ? "submit" : "button"} 
+             className={styles.leadButton} 
+             onClick={(e) => { 
+                if (!isOpen) { 
+                  e.preventDefault(); 
+                  setIsOpen(true); 
+                } 
+             }}
+          >
+            Залишити заявку
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export default function ChatModal() {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([
     { role: 'assistant', content: 'Вас турбує гострий дискомфорт зараз, чи ви плануєте плановий огляд і консультацію гастроентеролога?' }
   ]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [showCTA, setShowCTA] = useState(false);
   const [formData, setFormData] = useState({ name: '', phone: '+380' });
-  const [formSubmitted, setFormSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -23,7 +98,7 @@ export default function ChatModal() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isThinking, showForm, formSubmitted]);
+  }, [messages, isThinking]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -32,9 +107,6 @@ export default function ChatModal() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsThinking(true);
-    setShowForm(false);
-    setShowCTA(false);
-    setFormSubmitted(false);
 
     try {
       const response = await fetch('/api/chat', {
@@ -46,9 +118,6 @@ export default function ChatModal() {
       const data = await response.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
       
-      if (data.showCTA) {
-        setShowCTA(true);
-      }
       if (data.metadata) {
         setFormData(prev => ({ ...prev, ...data.metadata }));
       }
@@ -60,16 +129,12 @@ export default function ChatModal() {
     }
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormSubmitted(true);
-    setShowForm(false);
-    
+  const handleWidgetSubmit = async (data: any) => {
     try {
       await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, chatLog: messages })
+        body: JSON.stringify({ ...formData, ...data, chatLog: messages })
       });
     } catch(err) {
       console.error(err);
@@ -121,19 +186,9 @@ export default function ChatModal() {
                 {renderMessageContent(msg.content)}
               </div>
             </div>
-            {msg.role === 'assistant' && idx === messages.length - 1 && !isThinking && showCTA && (
+            {msg.role === 'assistant' && (
               <div className={`${styles.messageWrapper} ${styles.assistantWrapper} ${styles.ctaWrapper}`}>
-                <div className={styles.ctaContainer}>
-                   <p className={styles.ctaText}>Запишіться зараз або зателефонуйте нам:</p>
-                   <div className={styles.ctaActions}>
-                     <a href="tel:0800338008" className={styles.phoneLink}>
-                       <Phone size={16} /> 0 800 338 008
-                     </a>
-                     <button className={styles.leadButton} onClick={() => { setShowForm(true); setFormSubmitted(false); scrollToBottom(); }}>
-                       Залишити заявку
-                     </button>
-                   </div>
-                </div>
+                <ContactWidget onSubmit={handleWidgetSubmit} />
               </div>
             )}
           </React.Fragment>
@@ -149,46 +204,7 @@ export default function ChatModal() {
           </div>
         )}
 
-        {showForm && (
-          <div className={`${styles.messageWrapper} ${styles.assistantWrapper}`}>
-            <div className={styles.formContainer}>
-               <h4>Залишити заявку</h4>
-               <form onSubmit={handleFormSubmit}>
-                 <div className={styles.inputGroup}>
-                   <input 
-                     type="text" 
-                     placeholder="Ваше ім'я" 
-                     value={formData.name}
-                     onChange={e => setFormData({...formData, name: e.target.value})}
-                     required
-                     className={styles.inputField}
-                   />
-                 </div>
-                 <div className={styles.inputGroup}>
-                   <input 
-                     type="tel" 
-                     placeholder="+380" 
-                     value={formData.phone}
-                     onChange={e => setFormData({...formData, phone: e.target.value})}
-                     required
-                     className={styles.inputField}
-                     pattern="^\+380[0-9]{9}$"
-                     title="Формат: +380XXXXXXXXX"
-                   />
-                 </div>
-                 <button type="submit" className={styles.submitButton}>Надіслати</button>
-               </form>
-            </div>
-          </div>
-        )}
 
-        {formSubmitted && (
-          <div className={`${styles.messageWrapper} ${styles.assistantWrapper}`}>
-            <div className={`${styles.messageBubble} ${styles.assistantMessage}`}>
-               Дякую! Вашу заявку надіслано, адміністратор зв'яжеться з вами найближчим часом.
-            </div>
-          </div>
-        )}
 
         <div ref={messagesEndRef} />
       </div>
