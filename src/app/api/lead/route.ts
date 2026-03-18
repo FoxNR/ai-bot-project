@@ -36,6 +36,30 @@ export async function POST(req: Request) {
     // Sort by Date (newest first optionally, but appending is fine)
     await fs.writeFile(filePath, JSON.stringify(leads, null, 2), 'utf-8');
 
+    // Netlify Forms: save chat-history
+    try {
+      if (data.chatLog && Array.isArray(data.chatLog)) {
+        const full_transcript = data.chatLog
+          .map((m: any) => `${m.role === 'user' ? 'Клієнт' : 'Бот'}: ${m.content}`)
+          .join('\n\n');
+
+        const formBody = new URLSearchParams();
+        formBody.append("form-name", "chat-history");
+        formBody.append("session_id", newLead.id);
+        formBody.append("user_phone", data.phone || "");
+        formBody.append("full_transcript", full_transcript);
+
+        const baseUrl = new URL(req.url).origin;
+        await fetch(`${baseUrl}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formBody.toString(),
+        });
+      }
+    } catch (formErr) {
+      console.error("Netlify Form chat-history submission error:", formErr);
+    }
+
     return NextResponse.json({ success: true, leadId: newLead.id });
   } catch (error) {
     console.error("Lead API Error:", error);
