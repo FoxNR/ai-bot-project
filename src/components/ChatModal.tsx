@@ -84,7 +84,7 @@ const ContactWidget = ({ onSubmit }: { onSubmit: (data: any) => void }) => {
 
 export default function ChatModal() {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([
-    { role: 'assistant', content: 'Вас турбує гострий дискомфорт зараз, чи ви плануєте плановий огляд і консультацію гастроентеролога?' }
+    { role: 'assistant', content: 'Вітаю! Я AI-консультант медичного центру Салютем. Яка причина вашого звернення?' }
   ]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
