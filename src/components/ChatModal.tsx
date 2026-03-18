@@ -92,12 +92,23 @@ export default function ChatModal() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+
+  const scrollToLastMessage = (forceBottom = false) => {
+    if (forceBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.role === 'user') {
+      scrollToLastMessage(true);
+    } else {
+      scrollToLastMessage(false);
+    }
   }, [messages, isThinking]);
 
   const handleSend = async () => {
@@ -130,6 +141,7 @@ export default function ChatModal() {
   };
 
   const handleWidgetSubmit = async (data: any) => {
+    // 1. Internal API Lead
     try {
       await fetch('/api/lead', {
         method: 'POST',
@@ -137,7 +149,23 @@ export default function ChatModal() {
         body: JSON.stringify({ ...formData, ...data, chatLog: messages })
       });
     } catch(err) {
-      console.error(err);
+      console.error("Internal API error:", err);
+    }
+
+    // 2. Netlify Forms submission
+    try {
+      const body = new URLSearchParams();
+      body.append("form-name", "chat-leads");
+      body.append("name", data.name || "");
+      body.append("phone", data.phone || "");
+
+      await fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+    } catch (err) {
+      console.error("Netlify Form error:", err);
     }
   };
 
@@ -181,7 +209,10 @@ export default function ChatModal() {
       <div className={styles.messagesContainer} ref={containerRef}>
         {messages.map((msg, idx) => (
            <React.Fragment key={idx}>
-            <div className={`${styles.messageWrapper} ${msg.role === 'user' ? styles.userWrapper : styles.assistantWrapper}`}>
+            <div 
+              className={`${styles.messageWrapper} ${msg.role === 'user' ? styles.userWrapper : styles.assistantWrapper}`}
+              ref={idx === messages.length - 1 ? lastMessageRef : null}
+            >
               <div className={`${styles.messageBubble} ${msg.role === 'user' ? styles.userMessage : styles.assistantMessage}`}>
                 {renderMessageContent(msg.content)}
               </div>
@@ -208,6 +239,12 @@ export default function ChatModal() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Hidden form for Netlify detection */}
+      <form name="chat-leads" data-netlify="true" hidden>
+        <input type="text" name="name" required />
+        <input type="tel" name="phone" required />
+      </form>
 
       <div className={styles.inputArea}>
         <input 
