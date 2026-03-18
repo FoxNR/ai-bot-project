@@ -1,11 +1,22 @@
-<form name="chat-leads" data-netlify="true" hidden>
-  <input type="text" name="name" />
-  <input type="tel" name="phone" />
-  <textarea name="full_transcript"></textarea>
-</form>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Netlify Hidden Forms</title>
+</head>
+<body>
+  <form name="chat-leads" data-netlify="true" hidden>
+    <input type="hidden" name="form-name" value="chat-leads" />
+    <input type="text" name="name" />
+    <input type="tel" name="phone" />
+    <textarea name="full_transcript"></textarea>
+  </form>
 
-<form name="chat-history" data-netlify="true" hidden>
-  <input type="text" name="session_id" />
-  <input type="text" name="user_phone" />
-  <textarea name="full_transcript"></textarea>
-</form>
+  <form name="chat-history" data-netlify="true" hidden>
+    <input type="hidden" name="form-name" value="chat-history" />
+    <input type="text" name="session_id" />
+    <input type="text" name="user_phone" />
+    <textarea name="full_transcript"></textarea>
+  </form>
+</body>
+</html>

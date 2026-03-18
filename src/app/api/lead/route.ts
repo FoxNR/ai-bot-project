@@ -43,17 +43,21 @@ export async function POST(req: Request) {
           .map((m: any) => `${m.role === 'user' ? 'Клієнт' : 'Бот'}: ${m.content}`)
           .join('\n\n');
 
-        const formBody = new URLSearchParams();
-        formBody.append("form-name", "chat-history");
-        formBody.append("session_id", newLead.id);
-        formBody.append("user_phone", data.phone || "");
-        formBody.append("full_transcript", full_transcript);
+        const encode = (formData: Record<string, string>) =>
+          Object.keys(formData)
+            .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(formData[key]))
+            .join('&');
 
         const baseUrl = new URL(req.url).origin;
-        await fetch(`${baseUrl}/`, {
+        await fetch(`${baseUrl}/__forms.html`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formBody.toString(),
+          body: encode({
+            'form-name': 'chat-history',
+            'session_id': newLead.id,
+            'user_phone': data.phone || '',
+            'full_transcript': full_transcript,
+          }),
         });
       }
     } catch (formErr) {
